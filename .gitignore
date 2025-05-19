@@ -78,3 +78,12 @@ pip-delete-this-directory.txt
 .coverage.*
 coverage.xml
 *.cover
+
+# Data
+data/*.csv
+
+# Charts
+export_charts/*.png
+
+# Reports
+report_exports/*.pptx
