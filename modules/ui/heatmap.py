@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from modules.palette import PAL_TEAL, PAL_ORANGE
 
-def draw(df: pd.DataFrame, title: str = "Surplus Drive Heat‑map (↔ = Weeks; ↕ = Days of week)"):
+def draw(df: pd.DataFrame, title: str = "Surplus Drive Heat-map (↔ = Weeks; ↕ = Days of week)"):
     """Render a calendar-style heat‑map of Surplus Drive (sd)."""
     if df.empty or "sd" not in df.columns:
         st.info("Not enough data for heat‑map.")

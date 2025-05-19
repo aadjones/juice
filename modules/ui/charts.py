@@ -193,6 +193,7 @@ def draw(df: pd.DataFrame) -> Path | None:
     st.altair_chart(gq_chart(df), use_container_width=True)
 
     # ③ derivative
-    st.altair_chart(dgqdt_chart(df), use_container_width=True)
+    if len(df) > 1 and df["dgqdt"].abs().sum() > 0:
+        st.altair_chart(dgqdt_chart(df), use_container_width=True)
 
     return png_path

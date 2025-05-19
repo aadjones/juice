@@ -1,6 +1,6 @@
 import streamlit as st
 from modules.report import build_deck
-from modules.storage import load_log
+from modules.storage import load_log, DATA_DIR
 from modules.metrics import compute
 from modules.units import UNIT_DEFS
 from modules.ui import sidebar, kpi, charts, heatmap
@@ -10,11 +10,17 @@ st.set_page_config(page_title="Demby Analytics™", layout="wide")
 # ----------  title  ----------
 st.markdown(
     "<h1 style='text-align:center; margin-top:-1rem;'>"
-    "Demby&nbsp;Analytics™ – Psychic&nbsp;Physics&nbsp;Dashboard"
+    "Demby&nbsp;Analytics™ - Psychic&nbsp;Physics&nbsp;Dashboard"
     "</h1>",
     unsafe_allow_html=True,
 )
 # --------------------------------
+
+if "nickname" not in st.session_state:
+    st.info("Viewing demo data. Choose a nickname in the sidebar to start your own log!")
+else:
+    st.caption(f"Your data file: {DATA_DIR / (st.session_state.nickname + '.csv')}")
+
 
 df_raw = load_log()
 sidebar.draw(df_raw)           # sidebar first (may rerun)

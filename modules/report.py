@@ -34,7 +34,7 @@ def build_deck(df, chart_paths, out_dir="report_exports"):
     s0 = prs.slides.add_slide(prs.slide_layouts[0])
     s0.shapes.title.text = "Demby Analytics™"
     d0, d1 = df.date.min().date(), df.date.max().date()
-    s0.shapes.placeholders[1].text = f"KPI Board Deck\n{d0} – {d1}"
+    s0.shapes.placeholders[1].text = f"KPI Board Deck\n{d0} - {d1}"
 
     # -- Slide 2 : KPI table + commentary -----------------------------------
     s1 = prs.slides.add_slide(prs.slide_layouts[5])

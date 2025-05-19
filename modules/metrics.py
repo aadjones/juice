@@ -49,7 +49,7 @@ def compute(df: pd.DataFrame) -> pd.DataFrame:
     out["dJdt"] = out["juice"].diff() / out["days"].diff()    # Juice velocity
     out["dgqdt"] = out["gq"].diff() / out["days"].diff()      # GQ slope
 
-    # Signed momentum: only “productive” if surplus drive is positive
+    # Signed momentum: only "productive" if surplus drive is positive
     out["focus_flux"] = out["dJdt"] * np.sign(out["sd"])
 
     # -----------------------------------------------------------------
@@ -62,5 +62,9 @@ def compute(df: pd.DataFrame) -> pd.DataFrame:
             .rolling(window=30, min_periods=1)
             .sum()
     )
+
+    # replace single-row NaNs with 0 for display purposes
+    for col in ["dJdt", "dgqdt", "dgqdt_7d", "focus_flux", "sigma"]:
+        out[col] = out[col].fillna(0)
 
     return out

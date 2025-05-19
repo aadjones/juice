@@ -81,6 +81,7 @@ coverage.xml
 
 # Data
 data/*.csv
+!data/demo.csv
 
 # Charts
 export_charts/*.png
