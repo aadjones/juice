@@ -1,17 +1,25 @@
 import streamlit as st
-from modules.storage import append_entry
+from datetime import date
+from modules.storage import upsert_entry
 
 def draw(df_raw):
-    """Render sidebar sliders, return nothing."""
-    st.sidebar.header("Daily Log  📈")
+    st.sidebar.header("Log / Edit Entry  📅")
 
-    last_j  = int(df_raw.juice.iloc[-1])   if not df_raw.empty else 5
-    last_a  = int(df_raw.anxiety.iloc[-1]) if not df_raw.empty else 5
+    # --- choose date -------------------------------------------------------
+    sel_date = st.sidebar.date_input("Select date", value=date.today())
 
-    juice = st.sidebar.slider("Juice (0‑10)", 0, 10, value=last_j)
-    anxiety = st.sidebar.slider("Anxiety (0‑10)", 0, 10, value=last_a)
+    # pre‑fill sliders if date already logged
+    if not df_raw.empty and sel_date in df_raw["date"].dt.date.values:
+        row = df_raw[df_raw["date"].dt.date == sel_date].iloc[0]
+        default_juice, default_anx, default_event = int(row.juice), int(row.anxiety), row.event
+    else:
+        default_juice, default_anx, default_event = 5, 5, ""
 
-    if st.sidebar.button("Save today"):
-        append_entry(int(juice), int(anxiety))
-        st.sidebar.success("Entry saved!")
-        st.rerun()     # Streamlit ≥1.28
+    juice   = st.sidebar.slider("Juice (0‑10)", 0, 10, value=default_juice)
+    anxiety = st.sidebar.slider("Anxiety (0‑10)", 0, 10, value=default_anx)
+    event   = st.sidebar.text_input("Event note (optional)", value=default_event)
+
+    if st.sidebar.button("Save / Update"):
+        upsert_entry(sel_date, int(juice), int(anxiety), event.strip())
+        st.sidebar.success(f"Entry saved for {sel_date.isoformat()}!")
+        st.rerun()

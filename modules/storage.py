@@ -1,34 +1,51 @@
 # modules/storage.py
 from pathlib import Path
-import pandas as pd
 from datetime import date
+import pandas as pd
 
-DATA_PATH = Path("data/log.csv")
-_COLUMNS  = ["date", "juice", "anxiety"]
+DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "log.csv"
+_COLUMNS  = ["date", "juice", "anxiety", "event"]   # add event column
 
-def _ensure_csv():
-    """Create or repair the CSV so it always has headers."""
+def _init_csv():
     DATA_PATH.parent.mkdir(exist_ok=True)
-    expected_header = ','.join(_COLUMNS)
-    if not DATA_PATH.exists() or DATA_PATH.stat().st_size == 0:
+    if not DATA_PATH.exists():
         pd.DataFrame(columns=_COLUMNS).to_csv(DATA_PATH, index=False)
     else:
-        with open(DATA_PATH, 'r') as f:
-            first_line = f.readline().strip()
-        if first_line != expected_header:
-            # Read the rest of the file
-            df = pd.read_csv(DATA_PATH, header=None, names=_COLUMNS)
-            # Overwrite with correct header
+        # if header is missing event, repair in place
+        df = pd.read_csv(DATA_PATH)
+        if "event" not in df.columns:
+            df["event"] = ""
             df.to_csv(DATA_PATH, index=False)
 
 def load_log() -> pd.DataFrame:
-    _ensure_csv()
-    try:
-        return pd.read_csv(DATA_PATH, parse_dates=["date"])
-    except ValueError:                      # headers missing or corrupted
-        return pd.DataFrame(columns=_COLUMNS)
+    _init_csv()
+    return pd.read_csv(DATA_PATH, parse_dates=["date"])
 
-def append_entry(juice: int, anxiety: int) -> None:
-    _ensure_csv()
-    df = pd.DataFrame([[date.today(), juice, anxiety]], columns=_COLUMNS)
-    df.to_csv(DATA_PATH, mode="a", header=False, index=False)
+def append_entry(juice: int, anxiety: int, event: str = "") -> None:
+    """Append one row to the CSV."""
+    _init_csv()
+    row = {
+        "date": date.today(),
+        "juice": juice,
+        "anxiety": anxiety,
+        "event": event
+    }
+    pd.DataFrame([row]).to_csv(DATA_PATH, mode="a", header=False, index=False)
+
+def upsert_entry(day, juice: int, anxiety: int, event: str = "") -> None:
+    """
+    Insert or update a record for `day` (datetime.date).
+    """
+    _init_csv()
+    df = pd.read_csv(DATA_PATH, parse_dates=["date"])
+
+    mask = df["date"].dt.date == day
+    if mask.any():
+        # update existing row
+        df.loc[mask, ["juice", "anxiety", "event"]] = [juice, anxiety, event]
+    else:
+        # append new row
+        new_row = {"date": day, "juice": juice, "anxiety": anxiety, "event": event}
+        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+    df.sort_values("date").to_csv(DATA_PATH, index=False)

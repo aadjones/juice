@@ -2,7 +2,7 @@ import streamlit as st
 from modules.storage import load_log
 from modules.metrics import compute
 from modules.units import UNIT_DEFS
-from modules.ui import sidebar, kpi, charts   # __init__.py re‑exports
+from modules.ui import sidebar, kpi, charts, heatmap
 
 st.set_page_config(page_title="Aaron Analytics™", layout="wide")
 
@@ -19,3 +19,4 @@ kpi.draw(df, latest)
 st.caption(UNIT_DEFS)
 
 charts.draw(df)                # main charts
+heatmap.draw(df)               # calendar view
