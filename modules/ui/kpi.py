@@ -15,7 +15,7 @@ def draw(df, latest):
         value=f"{latest.gq:0.2f}",
         delta=f"{latest.gq - prev_gq:+0.02f}",
         delta_color="normal",
-        help="Juice ÷ Anxiety creative efficiency (≥1.5 is healthy)."
+        help="Juice / Anxiety. Creative efficiency (≥1.5 is healthy)."
     )
 
     # --- Φf  (Focus Flux) ------------------------------------------------------
