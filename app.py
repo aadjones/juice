@@ -7,6 +7,15 @@ from modules.ui import sidebar, kpi, charts, heatmap
 
 st.set_page_config(page_title="Demby Analytics™", layout="wide")
 
+# ----------  title  ----------
+st.markdown(
+    "<h1 style='text-align:center; margin-top:-1rem;'>"
+    "Demby&nbsp;Analytics™ – Psychic&nbsp;Physics&nbsp;Dashboard"
+    "</h1>",
+    unsafe_allow_html=True,
+)
+# --------------------------------
+
 df_raw = load_log()
 sidebar.draw(df_raw)           # sidebar first (may rerun)
 

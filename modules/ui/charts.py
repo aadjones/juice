@@ -1,102 +1,198 @@
-# modules/ui/charts.py  – COMPLETE FILE
+# modules/ui/charts.py  – modular version
 import altair as alt
 import streamlit as st
 from pathlib import Path
+import pandas as pd
 
 from modules.palette import PAL_BLUE, PAL_ORANGE, PAL_TEAL
 
-EXPORT_DIR = Path("export_charts")          # folder for PNGs
+EXPORT_DIR = Path("export_charts")
 EXPORT_DIR.mkdir(exist_ok=True)
 
 
-def _base(df):
+# ── internal helpers ───────────────────────────────────────────────────────
+def _base(df: pd.DataFrame) -> alt.Chart:
+    """Common x‑encoding (date on x‑axis)."""
     return alt.Chart(df).encode(x="date:T")
 
 
-def draw(df):
-    # ── Juice & Anxiety layers ────────────────────────────────────────────
-    juice_line = (
-        _base(df)
-        .mark_line(point=alt.OverlayMarkDef(shape="circle", size=50),
-                   strokeWidth=2, color=PAL_BLUE)
+def _export_png(chart: alt.Chart, filename: str) -> Path | None:
+    """Save chart as PNG; return path or None if export fails."""
+    path = EXPORT_DIR / filename
+    try:
+        import altair_saver  # backend auto‑registered
+        chart.save(path, scale_factor=2)
+        return path
+    except Exception as e:
+        st.warning(f"Could not export {filename}: {e}")
+        return None
+
+
+# ── Juice & Anxiety (+ optional events) ────────────────────────────────────
+import pandas as pd
+import altair as alt
+from modules.palette import PAL_BLUE, PAL_ORANGE
+
+# -------------------------------------------------------------------------
+def juice_anxiety_chart(df: pd.DataFrame) -> tuple[alt.Chart, Path | None]:
+    """
+    Build Juice–Anxiety line/point chart with a proper legend.
+    Returns (Altair chart, PNG path or None).
+    """
+    # ---- reshape to long form so Altair can auto‑legend ------------------
+    df_long = df.melt(
+        id_vars=["date"],
+        value_vars=["juice", "anxiety"],
+        var_name="metric",
+        value_name="value",
+    )
+
+    colour_scale = alt.Scale(domain=["juice", "anxiety"],
+                             range=[PAL_BLUE, PAL_ORANGE])
+    shape_scale  = alt.Scale(domain=["juice", "anxiety"],
+                             range=["circle", "square"])
+
+    # ---- line layer (dash carries semantics, but excluded from legend) ---
+    line = (
+        alt.Chart(df_long)
+        .mark_line(strokeWidth=2)
         .encode(
-            y=alt.Y("juice:Q",
-                    title="Jc (●)  |  Ax (■)",
-                    scale=alt.Scale(domain=[0, 10]))
+            x="date:T",
+            y=alt.Y("value:Q", title="Level"),
+            color=alt.Color("metric:N", scale=colour_scale,
+                            legend=alt.Legend(title="")),
+            strokeDash=alt.StrokeDash(
+                "metric:N",
+                scale=alt.Scale(domain=["juice", "anxiety"],
+                                range=[[1, 0], [6, 3]]),
+                legend=None,   # keep dash pattern out of legend swatch
+            ),
         )
     )
 
-    anx_line = (
-        _base(df)
-        .mark_line(point=alt.OverlayMarkDef(shape="square", size=50),
-                   strokeDash=[6, 3], strokeWidth=2, color=PAL_ORANGE)
-        .encode(y="anxiety:Q")
+    # ---- point layer (solid fill drives legend symbols) ------------------
+    points = (
+        alt.Chart(df_long)
+        .mark_point(size=70, filled=True)
+        .encode(
+            x="date:T",
+            y="value:Q",
+            color=alt.Color("metric:N", scale=colour_scale, legend=None),
+            shape=alt.Shape("metric:N", scale=shape_scale,
+                            legend=alt.Legend(title="")),
+        )
     )
 
-    # ── Optional annotation layer ─────────────────────────────────────────
-    has_events = (
-        "event" in df.columns and
-        df["event"].fillna("").str.strip().ne("").any()
-    )
+    # ---- optional event annotations --------------------------------------
+    has_evt = ("event" in df.columns
+               and df["event"].fillna("").str.strip().ne("").any())
 
-    if has_events:
-        df_annot = df[df["event"].fillna("").str.strip() != ""]
+    if has_evt:
+        evt_df = df[df["event"].fillna("").str.strip() != ""]
         annot = (
-            alt.Chart(df_annot)
+            alt.Chart(evt_df)
             .mark_text(align="left", dx=5, dy=-5, color="#666", fontSize=11)
             .encode(x="date:T", y="juice:Q", text="event:N")
         )
-        main_chart = juice_line + anx_line + annot
-        title_txt = "Juice, Anxiety & Events"
+        chart = line + points + annot
+        title_txt = "Juice & Anxiety over Time"
     else:
-        main_chart = juice_line + anx_line
-        title_txt = "Juice vs. Anxiety"
+        chart = line + points
+        title_txt = "Juice & Anxiety over Time"
 
-    st.altair_chart(
-        main_chart.properties(height=260, title=title_txt),
-        use_container_width=True
+    chart = chart.properties(
+        height=260,
+        title=alt.TitleParams(text=title_txt, anchor="middle",
+                              fontSize=16, fontWeight="bold", dy=-10)
     )
 
-    # ── Export this chart as PNG for board deck ───────────────────────────
-    chart_path = EXPORT_DIR / "juice_anxiety.png"
-    try:
-        import altair_saver                   # ensure backend
-        main_chart.save(chart_path, scale_factor=2)
-    except Exception as e:
-        chart_path = None                     # tells report builder to skip
-        st.warning(f"Could not export chart PNG: {e}")
+    # ---- export PNG for board deck ---------------------------------------
+    png_path = _export_png(chart, "juice_anxiety.png")
+    return chart, png_path
 
-    # ── GQ line ───────────────────────────────────────────────────────────
-    gq_line = (
+
+
+# ── GQ trend line ──────────────────────────────────────────────────────────
+def gq_chart(df: pd.DataFrame) -> alt.Chart:
+    """GQ line with horizontal equilibrium rule at GQ = 1."""
+    # line
+    line = (
         _base(df)
         .mark_line(point=True, strokeWidth=2, color=PAL_TEAL)
         .encode(
-            y=alt.Y("gq:Q", title="GQ = Jc / Ax",
-                    scale=alt.Scale(domain=[0, max(2.5, float(df.gq.max())*1.1)]))
+            y=alt.Y(
+                "gq:Q",
+                title="GQ = Jc / Ax",
+                scale=alt.Scale(domain=[0, max(2.5, float(df.gq.max()) * 1.1)]),
+            )
         )
-        .properties(height=200)
     )
-    st.altair_chart(gq_line, use_container_width=True)
 
-    # ── dGQ/dt bars + trend ───────────────────────────────────────────────
+    # equilibrium rule at GQ = 1
+    rule = (
+        alt.Chart(pd.DataFrame({"y": [1]}))
+        .mark_rule(color="#888", strokeDash=[4, 4])
+        .encode(y="y:Q")
+    )
+
+    return (
+        (line + rule)
+        .properties(
+            height=200,
+            title=alt.TitleParams(
+                text="Gumption Quotient Trend",
+                anchor="middle",
+                fontSize=16,
+                fontWeight="bold",
+                dy=-10,
+            ),
+        )
+    )
+
+
+
+# ── dGQ/dt bars + 7‑day trend ─────────────────────────────────────────────
+def dgqdt_chart(df: pd.DataFrame) -> alt.Chart:
     bars = (
         _base(df)
         .mark_bar(size=6)
         .encode(
             y=alt.Y("dgqdt:Q", title="d GQ / d t"),
-            color=alt.condition("datum.dgqdt > 0",
-                                alt.value(PAL_TEAL),
-                                alt.value(PAL_ORANGE))
+            color=alt.condition(
+                "datum.dgqdt > 0", alt.value(PAL_TEAL), alt.value(PAL_ORANGE)
+            ),
         )
     )
-    trend = _base(df).mark_line(color="black", strokeDash=[4, 2])\
-                     .encode(y="dgqdt_7d:Q")
-
-    st.altair_chart(
-        (bars + trend)
-        .properties(height=200, title="Daily & 7‑day change in GQ"),
-        use_container_width=True
+    trend = (
+        _base(df)
+        .mark_line(color="black", strokeDash=[4, 2])
+        .encode(y="dgqdt_7d:Q")
+    )
+    return (
+        bars + trend
+    ).properties(
+        height=200,
+        title=alt.TitleParams(
+            text="Daily & 7‑day change in GQ",
+            anchor="middle",
+            fontSize=16,
+            fontWeight="bold",
+            dy=-10,
+        ),
     )
 
-    # Return chart path (or None) so app.py can build the deck
-    return chart_path
+
+# ── public entrypoint for app.py ───────────────────────────────────────────
+def draw(df: pd.DataFrame) -> Path | None:
+    """Render all charts to Streamlit; return PNG path for board‑deck."""
+    # ① Juice / Anxiety
+    juice_chart, png_path = juice_anxiety_chart(df)
+    st.altair_chart(juice_chart, use_container_width=True)
+
+    # ② GQ
+    st.altair_chart(gq_chart(df), use_container_width=True)
+
+    # ③ derivative
+    st.altair_chart(dgqdt_chart(df), use_container_width=True)
+
+    return png_path

@@ -1,6 +1,8 @@
 import streamlit as st
+import pandas as pd
 from datetime import date
 from modules.storage import upsert_entry
+
 
 def draw(df_raw):
     st.sidebar.header("Log / Edit Entry  📅")
@@ -11,7 +13,9 @@ def draw(df_raw):
     # pre‑fill sliders if date already logged
     if not df_raw.empty and sel_date in df_raw["date"].dt.date.values:
         row = df_raw[df_raw["date"].dt.date == sel_date].iloc[0]
-        default_juice, default_anx, default_event = int(row.juice), int(row.anxiety), row.event
+        default_juice = int(row.juice)
+        default_anx   = int(row.anxiety)
+        default_event = default_event = "" if pd.isna(row.event) else str(row.event)
     else:
         default_juice, default_anx, default_event = 5, 5, ""
 
