@@ -1,0 +1,7 @@
+# modules/palette.py
+PAL_BLUE   = "#0072B2"
+PAL_ORANGE = "#D55E00"
+PAL_TEAL   = "#00A693"
+PAL_GREEN  = "#0CAA41"
+PAL_YELLOW = "#E9B800"
+PAL_RED    = "#D42626"
