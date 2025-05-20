@@ -100,10 +100,14 @@ def juice_anxiety_chart(df: pd.DataFrame) -> tuple[alt.Chart, Path | None]:
         chart = line + points
         title_txt = "Juice & Anxiety over Time"
 
-    chart = chart.properties(
-        height=260,
-        title=alt.TitleParams(text=title_txt, anchor="middle",
-                              fontSize=16, fontWeight="bold", dy=-10)
+    # Apply view configuration to the final combined chart
+    chart = (
+        chart
+        .properties(
+            height=260,
+            title=alt.TitleParams(text=title_txt, anchor="middle", fontSize=16, fontWeight="bold", dy=-10)
+        )
+        .configure_view(continuousHeight=240)
     )
 
     # ---- export PNG for board deck ---------------------------------------
@@ -114,38 +118,18 @@ def juice_anxiety_chart(df: pd.DataFrame) -> tuple[alt.Chart, Path | None]:
 
 # ── GQ trend line ──────────────────────────────────────────────────────────
 def gq_chart(df: pd.DataFrame) -> alt.Chart:
-    """GQ line with horizontal equilibrium rule at GQ = 1."""
-    # line
-    line = (
-        _base(df)
-        .mark_line(point=True, strokeWidth=2, color=PAL_TEAL)
-        .encode(
-            y=alt.Y(
-                "gq:Q",
-                title="GQ = Jc / Ax",
-                scale=alt.Scale(domain=[0, max(2.5, float(df.gq.max()) * 1.1)]),
-            )
-        )
-    )
-
-    # equilibrium rule at GQ = 1
-    rule = (
-        alt.Chart(pd.DataFrame({"y": [1]}))
-        .mark_rule(color="#888", strokeDash=[4, 4])
-        .encode(y="y:Q")
-    )
-
+    """Build GQ line chart."""
     return (
-        (line + rule)
+        alt.Chart(df)
+        .mark_line(strokeWidth=2)
+        .encode(
+            x="date:T",
+            y=alt.Y("gq:Q", title="GQ = Juice / Anxiety"),
+            tooltip=["date:T", alt.Tooltip("gq:Q", format=".2f")],
+        )
         .properties(
-            height=200,
-            title=alt.TitleParams(
-                text="Gumption Quotient Trend",
-                anchor="middle",
-                fontSize=16,
-                fontWeight="bold",
-                dy=-10,
-            ),
+            title=alt.TitleParams(text="Gumption Quotient Trend", anchor="middle", fontSize=16, fontWeight="bold", dy=-10),
+            height=240
         )
     )
 
@@ -153,32 +137,33 @@ def gq_chart(df: pd.DataFrame) -> alt.Chart:
 
 # ── dGQ/dt bars + 7‑day trend ─────────────────────────────────────────────
 def dgqdt_chart(df: pd.DataFrame) -> alt.Chart:
+    """Bar chart for dGQ/dt with 7-day moving average trend line."""
     bars = (
-        _base(df)
-        .mark_bar(size=6)
+        alt.Chart(df)
+        .mark_bar(size=8)
         .encode(
-            y=alt.Y("dgqdt:Q", title="d GQ / d t"),
+            x="date:T",
+            y=alt.Y("dgqdt:Q", title="dGQ/dt"),
             color=alt.condition(
                 "datum.dgqdt > 0", alt.value(PAL_TEAL), alt.value(PAL_ORANGE)
             ),
+            tooltip=["date:T", alt.Tooltip("dgqdt:Q", format="+.2f")],
         )
     )
     trend = (
-        _base(df)
-        .mark_line(color="black", strokeDash=[4, 2])
-        .encode(y="dgqdt_7d:Q")
+        alt.Chart(df)
+        .mark_line(color="#222", strokeDash=[4, 2])
+        .encode(
+            x="date:T",
+            y="dgqdt_7d:Q",
+        )
     )
     return (
-        bars + trend
-    ).properties(
-        height=200,
-        title=alt.TitleParams(
-            text="Daily & 7‑day change in GQ",
-            anchor="middle",
-            fontSize=16,
-            fontWeight="bold",
-            dy=-10,
-        ),
+        (bars + trend)
+        .properties(
+            title=alt.TitleParams(text="Daily & 7-day change in GQ", anchor="middle", fontSize=16, fontWeight="bold", dy=-10),
+            height=240
+        )
     )
 
 

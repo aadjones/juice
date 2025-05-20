@@ -7,6 +7,9 @@ from modules.palette import (
 import pandas as pd
 
 def draw(df, latest):
+    # Wrap KPIs in responsive container
+    st.markdown('<div class="kpi-row">', unsafe_allow_html=True)
+    
     k1, k2, k3 = st.columns(3)
 
     # ── 1) GQ ───────────────────────────────────────────────────────────────
@@ -60,3 +63,6 @@ def draw(df, latest):
     </div>
     """
     k3.markdown(entropy_html, unsafe_allow_html=True)
+    
+    # Close responsive container
+    st.markdown('</div>', unsafe_allow_html=True)
