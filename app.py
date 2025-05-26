@@ -192,6 +192,7 @@ df_raw = load_log()
 sidebar.draw(df_raw)           # sidebar first (may rerun)
 
 df = compute(df_raw)
+
 if df.empty:
     st.warning("No data yet. Use the sidebar to log your first entry.")
     st.stop()
