@@ -4,7 +4,7 @@ import streamlit as st
 from pathlib import Path
 import pandas as pd
 
-from modules.palette import PAL_BLUE, PAL_ORANGE, PAL_TEAL
+from modules.palette import PAL_BLUE, PAL_ORANGE, PAL_TEAL, PAL_GREEN, PAL_RED
 
 EXPORT_DIR = Path("export_charts")
 EXPORT_DIR.mkdir(exist_ok=True)
@@ -118,15 +118,71 @@ def juice_anxiety_chart(df: pd.DataFrame) -> tuple[alt.Chart, Path | None]:
 
 # ── GQ trend line ──────────────────────────────────────────────────────────
 def gq_chart(df: pd.DataFrame) -> alt.Chart:
-    """Build GQ line chart."""
-    return (
+    """Build GQ line chart with healthy threshold line."""
+    # Main GQ line chart - single connected line with conditional point colors
+    gq_line = (
         alt.Chart(df)
-        .mark_line(strokeWidth=2)
+        .mark_line(strokeWidth=2, color='#666')  # Neutral line color
         .encode(
             x="date:T",
             y=alt.Y("gq:Q", title="GQ = Juice / Anxiety"),
             tooltip=["date:T", alt.Tooltip("gq:Q", format=".2f")],
         )
+    )
+    
+    # Add colored points on top
+    gq_points = (
+        alt.Chart(df)
+        .mark_circle(size=80, stroke='white', strokeWidth=1)
+        .encode(
+            x="date:T",
+            y="gq:Q",
+            color=alt.condition(
+                alt.datum.gq >= 1.5,
+                alt.value(PAL_GREEN),  # Green for healthy
+                alt.value(PAL_RED)     # Red for unhealthy
+            ),
+            tooltip=["date:T", alt.Tooltip("gq:Q", format=".2f")],
+        )
+    )
+    
+    # Combine line and points
+    gq_line = gq_line + gq_points
+    
+    # Healthy threshold line at y=1.5 with annotation
+    threshold_line = (
+        alt.Chart(pd.DataFrame({'y': [1.5]}))
+        .mark_rule(strokeDash=[5, 5], color='#999', strokeWidth=1.5)
+        .encode(y='y:Q')
+    )
+    
+    # Add threshold annotation using the chart's data range for positioning
+    # Get the date range to position label at the end
+    max_date = df['date'].max()
+    threshold_label = (
+        alt.Chart(pd.DataFrame({
+            'date': [max_date], 
+            'y': [1.5], 
+            'label': ['Healthy (1.5)']
+        }))
+        .mark_text(
+            align='left',
+            baseline='bottom',
+            dx=5,
+            dy=-3,
+            fontSize=9,
+            color='#999',
+            fontStyle='italic'
+        )
+        .encode(
+            x='date:T',
+            y='y:Q',
+            text='label:N'
+        )
+    )
+    
+    return (
+        (gq_line + threshold_line + threshold_label)
         .properties(
             title=alt.TitleParams(text="Gumption Quotient Trend", anchor="middle", fontSize=16, fontWeight="bold", dy=-10),
             height=240
@@ -156,12 +212,22 @@ def dgqdt_chart(df: pd.DataFrame) -> alt.Chart:
         .encode(
             x="date:T",
             y="dgqdt_7d:Q",
+            tooltip=["date:T", alt.Tooltip("dgqdt_7d:Q", format="+.2f", title="7-day avg")]
         )
     )
     return (
         (bars + trend)
         .properties(
-            title=alt.TitleParams(text="Daily & 7-day change in GQ", anchor="middle", fontSize=16, fontWeight="bold", dy=-10),
+            title=alt.TitleParams(
+                text="Daily & 7-day change in GQ", 
+                subtitle="Bars = daily change • Dashed line = 7-day moving average trend",
+                anchor="middle", 
+                fontSize=16, 
+                fontWeight="bold", 
+                subtitleFontSize=12,
+                subtitleColor="#666",
+                dy=-10
+            ),
             height=240
         )
     )

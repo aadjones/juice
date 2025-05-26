@@ -197,8 +197,22 @@ if df.empty:
     st.warning("No data yet. Use the sidebar to log your first entry.")
     st.stop()
 
-latest = df.iloc[-1]
-kpi.draw(df, latest)
+# Add date selector for KPIs
+st.markdown("### 📊 Key Performance Indicators")
+col1, col2 = st.columns([1, 3])
+with col1:
+    available_dates = df['date'].dt.date.tolist()
+    available_dates.reverse()  # Most recent first
+    selected_date = st.selectbox(
+        "View KPIs for date:",
+        options=available_dates,
+        index=0,  # Default to most recent (now first in list)
+        format_func=lambda x: x.strftime("%Y-%m-%d")
+    )
+
+# Get data for selected date
+selected_row = df[df['date'].dt.date == selected_date].iloc[0]
+kpi.draw(df, selected_row)
 st.caption(UNIT_DEFS)
 
 chart_path = charts.draw(df)   # main charts
